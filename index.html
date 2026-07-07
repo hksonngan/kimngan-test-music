@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Music Player</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: #1a1a2e;
+            color: #eee;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100dvh;
+            padding: 20px;
+        }
+
+        .player {
+            background: #16213e;
+            border-radius: 24px;
+            padding: 28px;
+            width: 100%;
+            max-width: 360px;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+        }
+
+        .cover {
+            width: 100%;
+            aspect-ratio: 1;
+            border-radius: 16px;
+            object-fit: cover;
+            display: block;
+            margin-bottom: 22px;
+            background: #0f3460;
+        }
+
+        .meta { margin-bottom: 20px; }
+        .song-name { font-size: 1.15rem; font-weight: 700; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .song-artist { font-size: 0.88rem; color: #888; }
+
+        .progress-wrap {
+            margin-bottom: 16px;
+        }
+        .progress-bar {
+            background: #0f3460;
+            border-radius: 4px;
+            height: 4px;
+            cursor: pointer;
+            position: relative;
+            margin-bottom: 6px;
+        }
+        .progress-fill {
+            background: #e94560;
+            height: 100%;
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.25s linear;
+            pointer-events: none;
+        }
+        .time-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.72rem;
+            color: #555;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 22px;
+        }
+        .ctrl-btn {
+            background: none;
+            border: none;
+            color: #ccc;
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .ctrl-btn:active { background: #0f3460; }
+
+        .play-btn {
+            background: #e94560 !important;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            color: #fff !important;
+        }
+        .play-btn:active { background: #c73652 !important; }
+
+        .volume-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .vol-icon { color: #555; flex-shrink: 0; }
+
+        input[type=range] {
+            flex: 1;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 4px;
+            background: #0f3460;
+            border-radius: 4px;
+            outline: none;
+            cursor: pointer;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #e94560;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        input[type=range]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            background: #e94560;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+        }
+
+        .file-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 18px;
+            padding: 10px;
+            border: 1.5px dashed #333;
+            border-radius: 12px;
+            color: #666;
+            font-size: 0.85rem;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .file-btn:active { background: #0f3460; color: #ccc; }
+
+        .playlist {
+            margin-top: 12px;
+            max-height: 220px;
+            overflow-y: auto;
+        }
+        .pl-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .pl-item:active, .pl-item.active { background: #0f3460; }
+        .pl-item.active { color: #e94560; }
+        .pl-num { color: #444; width: 18px; text-align: right; flex-shrink: 0; font-size: 0.75rem; }
+        .pl-info { overflow: hidden; }
+        .pl-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pl-artist { font-size: 0.75rem; color: #555; }
+    </style>
+</head>
+<body>
+<div class="player">
+    <img class="cover" id="cover" src="" alt="album art">
+
+    <div class="meta">
+        <div class="song-name" id="songName"></div>
+        <div class="song-artist" id="songArtist"></div>
+    </div>
+
+    <div class="progress-wrap">
+        <div class="progress-bar" id="progressBar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="time-row">
+            <span id="currentTime">0:00</span>
+            <span id="duration">0:00</span>
+        </div>
+    </div>
+
+    <div class="controls">
+        <!-- Prev -->
+        <button class="ctrl-btn" onclick="prev()" aria-label="Previous">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+        </button>
+
+        <!-- Play/Pause -->
+        <button class="ctrl-btn play-btn" id="playBtn" onclick="togglePlay()" aria-label="Play">
+            <svg id="playIcon" width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8 5v14l11-7z"/>
+            </svg>
+        </button>
+
+        <!-- Next -->
+        <button class="ctrl-btn" onclick="next()" aria-label="Next">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18 14.5 12 6 6v12zm10-12v12h2V6h-2z"/></svg>
+        </button>
+    </div>
+
+    <div class="volume-row">
+        <svg class="vol-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z"/></svg>
+        <input type="range" id="volumeSlider" min="0" max="1" step="0.02" value="1" oninput="setVolume(this.value)" aria-label="Volume">
+        <svg class="vol-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+    </div>
+
+    <label class="file-btn" title="Load local music files">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6 10v-3h-4v-2h4V8l4 4-4 4z"/></svg>
+        Load local files
+        <input type="file" id="fileInput" accept="audio/*" multiple hidden onchange="loadLocalFiles(this.files)">
+    </label>
+
+    <div id="playlist" class="playlist"></div>
+</div>
+
+<audio id="audio" preload="none"></audio>
+
+<script>
+// Add your own songs here — put MP3 files in a songs/ folder and use relative paths like "songs/my-song.mp3"
+const songs = [
+    { name: 'Chúng ta của hiện tại', artist: 'Sơn Tùng MTP',
+      image: 'https://1.bp.blogspot.com/-wpE8kAroZl8/X-p8dYlTABI/AAAAAAAAJ8k/QWePuk9isy0PuPMxmweqCnajPlhEI8gagCNcBGAsYHQ/s787/132391052_223041176082901_5587329705790319564_n.png',
+      src:   'https://file-am-thanh.vercel.app/Chung%20Ta%20Cua%20Hien%20Tai%20-%20Son%20Tung%20M-TP.mp3' },
+    { name: 'Let me down slowly', artist: 'Alec Benjamin',
+      image: 'https://images.unsplash.com/photo-1614483573015-fc4ceb584797?auto=format&fit=crop&w=500&q=60',
+      src:   'https://file-am-thanh.vercel.app/Let%20Me%20Down%20Slowly%20Cover.mp3' },
+    { name: 'Give me your love', artist: 'DEAM',
+      image: 'https://images.unsplash.com/photo-1614453966169-fd72db98e20f?auto=format&fit=crop&w=500&q=60',
+      src:   'https://file-am-thanh.vercel.app/Give%20Me%20Your%20Love.mp3' },
+    { name: 'Without you', artist: 'DEAM',
+      image: 'https://images.unsplash.com/photo-1614486109039-a8f3dc411201?auto=format&fit=crop&w=500&q=60',
+      src:   'https://file-am-thanh.vercel.app/Without%20You2.mp3' },
+    { name: 'Perfect', artist: 'Ed Sheeran',
+      image: 'https://images.unsplash.com/photo-1614450231802-d7d0076effb8?auto=format&fit=crop&w=500&q=60',
+      src:   'https://file-am-thanh.vercel.app/Perfect%20(Ed%20Sheeran%20Cover).mp3' },
+    { name: 'Rendezvous', artist: 'DEAM',
+      image: 'https://images.unsplash.com/photo-1614442042855-e17d53875286?auto=format&fit=crop&w=500&q=60',
+      src:   'https://file-am-thanh.vercel.app/Rendezvous.mp3' },
+    { name: 'Fractures', artist: 'Illenium & Nevve',
+      image: 'https://images.unsplash.com/photo-1605885898627-1121a2a1ff25?auto=format&fit=crop&w=500&q=60',
+      src:   'https://file-am-thanh.vercel.app/Fractures%20-%20Illenium_%20Nevve.mp3' },
+    { name: 'Mayday', artist: 'TheFatRat & Laura Brehm',
+      image: 'https://images.unsplash.com/photo-1605722997309-8f308fa11a69?auto=format&fit=crop&w=500&q=60',
+      src:   'https://file-am-thanh.vercel.app/Mayday%20-%20TheFatRat_%20Laura%20Brehm.mp3' },
+    { name: 'Solitude', artist: 'TheFatRat & Slaydit',
+      image: 'https://images.unsplash.com/photo-1605852967399-8e500bac048e?auto=format&fit=crop&w=500&q=60',
+      src:   'https://file-am-thanh.vercel.app/Solitude%20-%20TheFatRat_%20Slaydit.mp3' },
+    { name: 'Chosen', artist: 'TheFatRat & Laura Brehm',
+      image: 'https://images.unsplash.com/photo-1601758124360-86f5a0432c42?auto=format&fit=crop&w=500&q=60',
+      src:   'https://file-am-thanh.vercel.app/Chosen%20-%20TheFatRat_%20Laura%20Brehm_%20Anna%20Yv.mp3' },
+];
+
+const audio       = document.getElementById('audio');
+const cover       = document.getElementById('cover');
+const songName    = document.getElementById('songName');
+const songArtist  = document.getElementById('songArtist');
+const progressFill= document.getElementById('progressFill');
+const progressBar = document.getElementById('progressBar');
+const currentTimeEl = document.getElementById('currentTime');
+const durationEl  = document.getElementById('duration');
+const playIcon    = document.getElementById('playIcon');
+
+const ICON_PLAY  = '<path d="M8 5v14l11-7z"/>';
+const ICON_PAUSE = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
+
+let idx = 0;
+
+function fmt(s) {
+    if (!s || isNaN(s)) return '0:00';
+    return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+}
+
+function loadSong(autoplay) {
+    const s = songs[idx];
+    cover.src        = s.image;
+    songName.textContent   = s.name;
+    songArtist.textContent = s.artist;
+    audio.src        = s.src;
+    progressFill.style.width = '0%';
+    currentTimeEl.textContent = '0:00';
+    durationEl.textContent    = '0:00';
+
+    // Show song info on iPhone lock screen / control center
+    if ('mediaSession' in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: s.name,
+            artist: s.artist,
+            artwork: [{ src: s.image, sizes: '500x500', type: 'image/jpeg' }],
+        });
+    }
+
+    if (autoplay) {
+        audio.play().catch(() => {});
+    }
+}
+
+function togglePlay() {
+    if (audio.paused) {
+        audio.play().catch(() => {});
+    } else {
+        audio.pause();
+    }
+}
+
+function next() {
+    idx = (idx + 1) % songs.length;
+    loadSong(!audio.paused || audio.ended);
+    renderPlaylist();
+}
+
+function prev() {
+    if (audio.currentTime > 3) {
+        audio.currentTime = 0;
+    } else {
+        idx = (idx - 1 + songs.length) % songs.length;
+        loadSong(!audio.paused);
+        renderPlaylist();
+    }
+}
+
+function setVolume(v) {
+    audio.volume = v;
+}
+
+// Sync play/pause icon with actual audio state
+audio.addEventListener('play',  () => { playIcon.innerHTML = ICON_PAUSE; });
+audio.addEventListener('pause', () => { playIcon.innerHTML = ICON_PLAY; });
+
+audio.addEventListener('timeupdate', () => {
+    if (!audio.duration) return;
+    progressFill.style.width = (audio.currentTime / audio.duration * 100) + '%';
+    currentTimeEl.textContent = fmt(audio.currentTime);
+});
+
+audio.addEventListener('loadedmetadata', () => {
+    durationEl.textContent = fmt(audio.duration);
+});
+
+audio.addEventListener('ended', next);
+
+// Click on progress bar to seek
+progressBar.addEventListener('click', e => {
+    if (!audio.duration) return;
+    const r = progressBar.getBoundingClientRect();
+    audio.currentTime = ((e.clientX - r.left) / r.width) * audio.duration;
+});
+
+// ─── Media Session API ────────────────────────────────────────────────────────
+// This is what makes iPod Air double-click (nexttrack) and triple-click
+// (previoustrack) work. Without these handlers the browser ignores those events.
+if ('mediaSession' in navigator) {
+    navigator.mediaSession.setActionHandler('play',  () => audio.play());
+    navigator.mediaSession.setActionHandler('pause', () => audio.pause());
+    navigator.mediaSession.setActionHandler('nexttrack',     next);
+    navigator.mediaSession.setActionHandler('previoustrack', prev);
+    navigator.mediaSession.setActionHandler('seekbackward', () => { audio.currentTime = Math.max(0, audio.currentTime - 10); });
+    navigator.mediaSession.setActionHandler('seekforward',  () => { audio.currentTime = Math.min(audio.duration || 0, audio.currentTime + 10); });
+}
+
+loadSong(false);
+
+// ─── Local file loading ───────────────────────────────────────────────────────
+function loadLocalFiles(files) {
+    if (!files.length) return;
+
+    // Revoke old blob URLs to free memory
+    songs.forEach(s => { if (s.blob) URL.revokeObjectURL(s.src); });
+
+    const newSongs = Array.from(files).map(f => ({
+        name:   f.name.replace(/\.[^.]+$/, ''), // strip extension
+        artist: '',
+        image:  '',
+        src:    URL.createObjectURL(f),
+        blob:   true,
+    }));
+
+    // Attempt to read ID3 artist/title via audio element hack (best-effort)
+    songs.splice(0, songs.length, ...newSongs);
+    idx = 0;
+    renderPlaylist();
+    loadSong(false);
+}
+
+function renderPlaylist() {
+    const pl = document.getElementById('playlist');
+    pl.innerHTML = '';
+    songs.forEach((s, i) => {
+        const el = document.createElement('div');
+        el.className = 'pl-item' + (i === idx ? ' active' : '');
+        el.dataset.i = i;
+        el.innerHTML = `<span class="pl-num">${i + 1}</span>
+            <div class="pl-info">
+                <div class="pl-name">${s.name}</div>
+                ${s.artist ? `<div class="pl-artist">${s.artist}</div>` : ''}
+            </div>`;
+        el.addEventListener('click', () => {
+            idx = i;
+            loadSong(true);
+            renderPlaylist();
+        });
+        pl.appendChild(el);
+    });
+}
+
+</script>
+</body>
+</html>
