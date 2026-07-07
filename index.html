@@ -282,25 +282,29 @@ function fmt(s) {
 
 function loadSong(autoplay) {
     const s = songs[idx];
-    cover.src        = s.image;
+    cover.src = s.image || '';
+    cover.style.visibility = s.image ? 'visible' : 'hidden';
     songName.textContent   = s.name;
     songArtist.textContent = s.artist;
-    audio.src        = s.src;
     progressFill.style.width = '0%';
     currentTimeEl.textContent = '0:00';
     durationEl.textContent    = '0:00';
 
-    // Show song info on iPhone lock screen / control center
     if ('mediaSession' in navigator) {
         navigator.mediaSession.metadata = new MediaMetadata({
             title: s.name,
             artist: s.artist,
-            artwork: [{ src: s.image, sizes: '500x500', type: 'image/jpeg' }],
+            artwork: s.image ? [{ src: s.image, sizes: '500x500', type: 'image/jpeg' }] : [],
         });
     }
 
+    // Safari: pause before src swap to avoid decoder getting stuck between tracks
+    audio.pause();
+    audio.src = s.src;
     if (autoplay) {
         audio.play().catch(() => {});
+    } else {
+        audio.load(); // fetch metadata (duration) without autoplaying
     }
 }
 
@@ -313,19 +317,21 @@ function togglePlay() {
 }
 
 function next() {
+    const wasPlaying = !audio.paused;
     idx = (idx + 1) % songs.length;
-    loadSong(!audio.paused || audio.ended);
+    loadSong(wasPlaying);
     renderPlaylist();
 }
 
 function prev() {
     if (audio.currentTime > 3) {
         audio.currentTime = 0;
-    } else {
-        idx = (idx - 1 + songs.length) % songs.length;
-        loadSong(!audio.paused);
-        renderPlaylist();
+        return;
     }
+    const wasPlaying = !audio.paused;
+    idx = (idx - 1 + songs.length) % songs.length;
+    loadSong(wasPlaying);
+    renderPlaylist();
 }
 
 function setVolume(v) {
@@ -348,23 +354,38 @@ audio.addEventListener('loadedmetadata', () => {
 
 audio.addEventListener('ended', next);
 
-// Click on progress bar to seek
-progressBar.addEventListener('click', e => {
+// Seek — use touch position on mobile, mouse on desktop
+function seekTo(clientX) {
     if (!audio.duration) return;
     const r = progressBar.getBoundingClientRect();
-    audio.currentTime = ((e.clientX - r.left) / r.width) * audio.duration;
-});
+    audio.currentTime = Math.max(0, Math.min(1, (clientX - r.left) / r.width)) * audio.duration;
+}
+progressBar.addEventListener('click', e => seekTo(e.clientX));
+progressBar.addEventListener('touchend', e => {
+    e.preventDefault();
+    seekTo(e.changedTouches[0].clientX);
+}, { passive: false });
 
 // ─── Media Session API ────────────────────────────────────────────────────────
-// This is what makes iPod Air double-click (nexttrack) and triple-click
-// (previoustrack) work. Without these handlers the browser ignores those events.
+// Required for iPod Air headphone button: double-click=next, triple-click=prev
+// Also drives lock screen / Control Center on iPhone
 if ('mediaSession' in navigator) {
-    navigator.mediaSession.setActionHandler('play',  () => audio.play());
+    navigator.mediaSession.setActionHandler('play',  () => audio.play().catch(() => {}));
     navigator.mediaSession.setActionHandler('pause', () => audio.pause());
     navigator.mediaSession.setActionHandler('nexttrack',     next);
     navigator.mediaSession.setActionHandler('previoustrack', prev);
+    // seekbackward/seekforward shown in Control Center scrubber on iOS
     navigator.mediaSession.setActionHandler('seekbackward', () => { audio.currentTime = Math.max(0, audio.currentTime - 10); });
     navigator.mediaSession.setActionHandler('seekforward',  () => { audio.currentTime = Math.min(audio.duration || 0, audio.currentTime + 10); });
+    // Update playback position for lock screen scrubber
+    audio.addEventListener('timeupdate', () => {
+        if (!audio.duration) return;
+        navigator.mediaSession.setPositionState({
+            duration: audio.duration,
+            playbackRate: audio.playbackRate,
+            position: audio.currentTime,
+        });
+    });
 }
 
 loadSong(false);
@@ -384,7 +405,6 @@ function loadLocalFiles(files) {
         blob:   true,
     }));
 
-    // Attempt to read ID3 artist/title via audio element hack (best-effort)
     songs.splice(0, songs.length, ...newSongs);
     idx = 0;
     renderPlaylist();
