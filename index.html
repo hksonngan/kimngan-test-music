@@ -635,23 +635,17 @@ audio.addEventListener('ended', () => {
 let sleepTimer = null;
 
 function setSleep(minutes, btn) {
-    clearTimeout(sleepTimer);
+    clearInterval(sleepTimer);
     sleepTimer = null;
     document.querySelectorAll('.sleep-opt').forEach(b => b.classList.toggle('active-sleep', minutes === 0 ? b.id === 'sleepOff' : b === btn));
     if (minutes === 0) { document.getElementById('sleepLabel').textContent = 'Sleep'; return; }
-    const ms = minutes * 60 * 1000;
-    let remaining = ms;
-    const tick = setInterval(() => {
-        remaining -= 30000;
-        if (remaining <= 0) { clearInterval(tick); return; }
-        document.getElementById('sleepLabel').textContent = fmt(remaining / 1000);
+    let remaining = minutes * 60;
+    document.getElementById('sleepLabel').textContent = fmt(remaining);
+    sleepTimer = setInterval(() => {
+        remaining -= 30;
+        if (remaining <= 0) { audio.pause(); setSleep(0); return; }
+        document.getElementById('sleepLabel').textContent = fmt(remaining);
     }, 30000);
-    document.getElementById('sleepLabel').textContent = fmt(ms / 1000);
-    sleepTimer = setTimeout(() => {
-        audio.pause();
-        clearInterval(tick);
-        setSleep(0); // called from timeout — no btn needed
-    }, ms);
 }
 
 // ─── Keyboard shortcuts ───────────────────────────────────────────────────────
@@ -822,31 +816,32 @@ function initAudioGraph() {
     srcNode.connect(filterBass).connect(filterMid).connect(filterTreble).connect(audioCtx.destination);
 }
 
+const EQ_BANDS = {
+    bass:   { filter: () => filterBass,   slider: 'bassSlider',   db: 'bassDb'   },
+    mid:    { filter: () => filterMid,    slider: 'midSlider',    db: 'midDb'    },
+    treble: { filter: () => filterTreble, slider: 'trebleSlider', db: 'trebleDb' },
+};
+
+function fmtDb(v) { return (v > 0 ? '+' : '') + v + ' dB'; }
+
 function setEQ(band, value) {
     initAudioGraph();
     if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
     const gain = Number(value);
-    if (band === 'bass')   { filterBass.gain.value   = gain; document.getElementById('bassDb').textContent   = (gain > 0 ? '+' : '') + gain + ' dB'; }
-    if (band === 'mid')    { filterMid.gain.value    = gain; document.getElementById('midDb').textContent    = (gain > 0 ? '+' : '') + gain + ' dB'; }
-    if (band === 'treble') { filterTreble.gain.value = gain; document.getElementById('trebleDb').textContent = (gain > 0 ? '+' : '') + gain + ' dB'; }
-    // Save per song
+    const b = EQ_BANDS[band];
+    if (b && audioCtx) b.filter().gain.value = gain;
+    if (b) document.getElementById(b.db).textContent = fmtDb(gain);
     if (!eqStore[idx]) eqStore[idx] = { bass: 0, mid: 0, treble: 0 };
     eqStore[idx][band] = gain;
 }
 
 function loadEQ(songIdx) {
     const eq = eqStore[songIdx] || (songs[songIdx] && songs[songIdx].eq) || { bass: 0, mid: 0, treble: 0 };
-    document.getElementById('bassSlider').value   = eq.bass;
-    document.getElementById('midSlider').value    = eq.mid;
-    document.getElementById('trebleSlider').value = eq.treble;
-    document.getElementById('bassDb').textContent   = (eq.bass   > 0 ? '+' : '') + eq.bass   + ' dB';
-    document.getElementById('midDb').textContent    = (eq.mid    > 0 ? '+' : '') + eq.mid    + ' dB';
-    document.getElementById('trebleDb').textContent = (eq.treble > 0 ? '+' : '') + eq.treble + ' dB';
-    if (audioCtx) {
-        filterBass.gain.value   = eq.bass;
-        filterMid.gain.value    = eq.mid;
-        filterTreble.gain.value = eq.treble;
-    }
+    Object.entries(EQ_BANDS).forEach(([band, b]) => {
+        document.getElementById(b.slider).value = eq[band];
+        document.getElementById(b.db).textContent = fmtDb(eq[band]);
+        if (audioCtx) b.filter().gain.value = eq[band];
+    });
 }
 
 function resetEQ() {
