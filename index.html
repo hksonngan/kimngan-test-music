@@ -316,18 +316,36 @@ function drawCover(title, artist) {
     ctx.font = 'bold 46px -apple-system, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
+    const maxW = W - 60;
     const words = title.split(' ');
     const lines = [];
     let line = '';
     for (const w of words) {
         const test = line ? line + ' ' + w : w;
-        if (ctx.measureText(test).width > W - 60 && line) { lines.push(line); line = w; }
+        if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = w; }
         else line = test;
     }
-    lines.push(line);
+    if (line) lines.push(line);
+    // Scale down font if any single line still overflows
+    let fontSize = 46;
+    const maxLineW = Math.max(...lines.map(l => ctx.measureText(l).width));
+    if (maxLineW > maxW) {
+        fontSize = Math.floor(46 * maxW / maxLineW);
+        ctx.font = `bold ${fontSize}px -apple-system, sans-serif`;
+    }
     const lineH = 54;
     const startY = W * 0.82 - ((lines.length - 1) * lineH) / 2;
     lines.forEach((l, i) => ctx.fillText(l, W / 2, startY + i * lineH));
+}
+
+function updateMediaSession() {
+    if (!('mediaSession' in navigator) || !songs[idx]) return;
+    const s = songs[idx];
+    navigator.mediaSession.metadata = new MediaMetadata({
+        title: s.name,
+        artist: s.artist,
+        artwork: [{ src: coverCanvas.toDataURL(), sizes: '500x500', type: 'image/png' }],
+    });
 }
 
 function loadSong(autoplay) {
@@ -339,13 +357,7 @@ function loadSong(autoplay) {
     currentTimeEl.textContent = '0:00';
     durationEl.textContent    = '0:00';
 
-    if ('mediaSession' in navigator) {
-        navigator.mediaSession.metadata = new MediaMetadata({
-            title: s.name,
-            artist: s.artist,
-            artwork: [{ src: coverCanvas.toDataURL(), sizes: '500x500', type: 'image/png' }],
-        });
-    }
+    updateMediaSession();
 
     // Safari: pause before src swap to avoid decoder getting stuck between tracks
     audio.pause();
@@ -366,6 +378,7 @@ function togglePlay() {
 }
 
 function next() {
+    if (!songs.length) return;
     const wasPlaying = !audio.paused;
     idx = (idx + 1) % songs.length;
     loadSong(wasPlaying);
@@ -373,8 +386,11 @@ function next() {
 }
 
 function prev() {
+    if (!songs.length) return;
     if (audio.currentTime > 3) {
         audio.currentTime = 0;
+        // still update lock screen metadata for current song
+        updateMediaSession();
         return;
     }
     const wasPlaying = !audio.paused;
@@ -426,7 +442,7 @@ if ('mediaSession' in navigator) {
     // seekbackward/seekforward shown in Control Center scrubber on iOS
     navigator.mediaSession.setActionHandler('seekbackward', () => { audio.currentTime = Math.max(0, audio.currentTime - 10); });
     navigator.mediaSession.setActionHandler('seekforward',  () => { audio.currentTime = Math.min(audio.duration || 0, audio.currentTime + 10); });
-    navigator.mediaSession.setActionHandler('seekto', e => { audio.currentTime = e.seekTime; });
+    navigator.mediaSession.setActionHandler('seekto', e => { if (e.seekTime != null) audio.currentTime = e.seekTime; });
     // Update playback position for lock screen scrubber
     audio.addEventListener('timeupdate', () => {
         if (!audio.duration) return;
