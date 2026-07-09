@@ -116,6 +116,32 @@
         .play-btn:active { background: #c73652 !important; }
         .ctrl-btn.active { color: #e94560; }
 
+        .extra-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 14px;
+        }
+        .extra-label {
+            font-size: 0.75rem;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            flex-shrink: 0;
+        }
+        .sleep-btns { display: flex; gap: 6px; }
+        .sleep-opt {
+            background: #0f3460;
+            border: none;
+            color: #666;
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            border-radius: 20px;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .sleep-opt:active, .sleep-opt.active-sleep { background: #e94560; color: #fff; }
+
         .volume-row {
             display: flex;
             align-items: center;
@@ -322,6 +348,21 @@
         <button class="ctrl-btn" onclick="next()" aria-label="Next">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18 14.5 12 6 6v12zm10-12v12h2V6h-2z"/></svg>
         </button>
+
+        <!-- Repeat -->
+        <button class="ctrl-btn" id="repeatBtn" onclick="cycleRepeat()" aria-label="Repeat">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>
+        </button>
+    </div>
+
+    <div class="extra-row">
+        <span id="sleepLabel" class="extra-label">Sleep</span>
+        <div class="sleep-btns">
+            <button class="sleep-opt" onclick="setSleep(15)">15m</button>
+            <button class="sleep-opt" onclick="setSleep(30)">30m</button>
+            <button class="sleep-opt" onclick="setSleep(60)">60m</button>
+            <button class="sleep-opt active-sleep" id="sleepOff" onclick="setSleep(0)">Off</button>
+        </div>
     </div>
 
     <div class="volume-row">
@@ -558,6 +599,68 @@ function setVolume(v) {
     audio.volume = v;
 }
 
+// ─── Repeat ───────────────────────────────────────────────────────────────────
+// modes: 'none' → 'all' → 'one'
+let repeatMode = 'none';
+const REPEAT_ICONS = {
+    none: '<path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/>',
+    all:  '<path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/>',
+    one:  '<path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/><text x="12" y="13.5" text-anchor="middle" font-size="7" font-weight="bold" fill="currentColor">1</text>',
+};
+
+function cycleRepeat() {
+    repeatMode = repeatMode === 'none' ? 'all' : repeatMode === 'all' ? 'one' : 'none';
+    const btn = document.getElementById('repeatBtn');
+    btn.querySelector('svg').innerHTML = REPEAT_ICONS[repeatMode];
+    btn.classList.toggle('active', repeatMode !== 'none');
+}
+
+audio.addEventListener('ended', () => {
+    if (repeatMode === 'one') { audio.currentTime = 0; audio.play().catch(() => {}); }
+    else if (repeatMode === 'all' || idx < songs.length - 1) next();
+    else audio.pause(); // end of list, no repeat
+});
+
+// ─── Sleep timer ──────────────────────────────────────────────────────────────
+let sleepTimer = null;
+
+function setSleep(minutes) {
+    clearTimeout(sleepTimer);
+    sleepTimer = null;
+    // Reset all button styles
+    document.querySelectorAll('.sleep-opt').forEach(b => b.classList.remove('active-sleep'));
+    document.getElementById('sleepOff').classList.toggle('active-sleep', minutes === 0);
+    if (minutes === 0) { document.getElementById('sleepLabel').textContent = 'Sleep'; return; }
+    // Highlight selected button
+    event.target.classList.add('active-sleep');
+    const ms = minutes * 60 * 1000;
+    let remaining = ms;
+    // Update label with countdown every 30s
+    const tick = setInterval(() => {
+        remaining -= 30000;
+        if (remaining <= 0) { clearInterval(tick); return; }
+        document.getElementById('sleepLabel').textContent = fmt(remaining / 1000);
+    }, 30000);
+    document.getElementById('sleepLabel').textContent = fmt(ms / 1000);
+    sleepTimer = setTimeout(() => {
+        audio.pause();
+        clearInterval(tick);
+        setSleep(0);
+    }, ms);
+}
+
+// ─── Keyboard shortcuts ───────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return; // don't intercept slider input
+    if (e.code === 'Space')       { e.preventDefault(); togglePlay(); }
+    if (e.code === 'ArrowRight')  { audio.currentTime = Math.min(audio.duration || 0, audio.currentTime + 5); }
+    if (e.code === 'ArrowLeft')   { audio.currentTime = Math.max(0, audio.currentTime - 5); }
+    if (e.code === 'ArrowUp')     { e.preventDefault(); audio.volume = Math.min(1, audio.volume + 0.05); document.getElementById('volumeSlider').value = audio.volume; }
+    if (e.code === 'ArrowDown')   { e.preventDefault(); audio.volume = Math.max(0, audio.volume - 0.05); document.getElementById('volumeSlider').value = audio.volume; }
+    if (e.code === 'KeyN')        next();
+    if (e.code === 'KeyP')        prev();
+});
+
 // ─── Shuffle ──────────────────────────────────────────────────────────────────
 let shuffle = false;
 
@@ -601,8 +704,6 @@ audio.addEventListener('timeupdate', () => {
 audio.addEventListener('loadedmetadata', () => {
     durationEl.textContent = '-' + fmt(audio.duration);
 });
-
-audio.addEventListener('ended', next);
 
 // Seek — use touch position on mobile, mouse on desktop
 function seekTo(clientX) {
