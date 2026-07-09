@@ -715,7 +715,7 @@ audio.addEventListener('play', () => {
     if (!audioCtx) return;
     if (audioCtx.state === 'suspended') audioCtx.resume();
     if (isNew) { loadEQ(idx); startViz(); }
-    else if (analyser && !vizRaf) vizLoop(); // restart loop if it stopped after fade-out
+    else if (!vizRaf) vizLoop(); // restart loop if it stopped after fade-out
 });
 
 // ─── Visualizer ───────────────────────────────────────────────────────────────
@@ -725,13 +725,13 @@ let analyser, vizRaf;
 // Single state variable: 1 = playing (full bars), 0 = stopped (bars gone)
 // When paused, vizAlpha counts down each frame until 0 → single RAF loop, no races
 let vizAlpha = 0;
-// Snapshot of bar heights at pause time — used for fade-out
 let lastData = null;
 
 function startViz() {
     if (!audioCtx || analyser) return;
     analyser = audioCtx.createAnalyser();
     analyser.fftSize = 128;
+    lastData = new Uint8Array(analyser.frequencyBinCount); // allocated once
     filterTreble.connect(analyser);
     analyser.connect(audioCtx.destination);
     try { filterTreble.disconnect(audioCtx.destination); } catch(_) {}
@@ -740,20 +740,13 @@ function startViz() {
 
 function vizLoop() {
     vizRaf = requestAnimationFrame(vizLoop);
-    if (!analyser) return;
-
-    const bins     = analyser.frequencyBinCount;
-    const data     = new Uint8Array(bins);
     const W = vizCanvas.width, H = vizCanvas.height;
-    const useBins  = Math.floor(bins * 0.75);
+    const useBins = Math.floor(analyser.frequencyBinCount * 0.75);
 
     if (!audio.paused) {
-        // Playing: read live data, reset alpha
-        analyser.getByteFrequencyData(data);
-        lastData  = data;
-        vizAlpha  = 1;
+        analyser.getByteFrequencyData(lastData);
+        vizAlpha = 1;
     } else {
-        // Paused: fade out using last captured frame
         vizAlpha -= 0.04;
         if (vizAlpha <= 0) {
             vizAlpha = 0;
@@ -762,12 +755,11 @@ function vizLoop() {
             vizRaf = null;
             return;
         }
-        if (lastData) data.set(lastData);
     }
 
     vizCtx.clearRect(0, 0, W, H);
     for (let i = 0; i < useBins; i++) {
-        const v    = (data[i] / 255) * vizAlpha;
+        const v    = (lastData[i] / 255) * vizAlpha;
         const barH = v * H * 0.55;
         if (barH < 1) continue;
         const x   = i * (W / useBins);
