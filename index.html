@@ -175,7 +175,7 @@
 </head>
 <body>
 <div class="player">
-    <img class="cover" id="cover" src="" alt="album art">
+    <canvas class="cover" id="cover" width="500" height="500"></canvas>
 
     <div class="meta">
         <div class="song-name" id="songName"></div>
@@ -232,20 +232,21 @@
 <script>
 // Add your own songs here — put MP3 files in a songs/ folder and use relative paths like "songs/my-song.mp3"
 const songs = [
-    { name: 'Chung ta cua hien tai', artist: 'Son Tung MTP',   image: 'img/01.jpg', src: 'songs/01-chung-ta-cua-hien-tai.mp3' },
-    { name: 'Let me down slowly',    artist: 'Alec Benjamin',  image: 'img/02.jpg', src: 'songs/02-let-me-down-slowly.mp3' },
-    { name: 'Give me your love',     artist: 'DEAM',           image: 'img/03.jpg', src: 'songs/03-give-me-your-love.mp3' },
-    { name: 'Without you',          artist: 'DEAM',           image: 'img/04.jpg', src: 'songs/04-without-you.mp3' },
-    { name: 'Perfect',              artist: 'Ed Sheeran',     image: 'img/05.jpg', src: 'songs/05-perfect.mp3' },
-    { name: 'Rendezvous',           artist: 'DEAM',           image: 'img/06.jpg', src: 'songs/06-rendezvous.mp3' },
-    { name: 'Fractures',            artist: 'Illenium & Nevve',       image: 'img/07.jpg', src: 'songs/07-fractures.mp3' },
-    { name: 'Mayday',               artist: 'TheFatRat & Laura Brehm',image: 'img/08.jpg', src: 'songs/08-mayday.mp3' },
-    { name: 'Solitude',             artist: 'TheFatRat & Slaydit',    image: 'img/09.jpg', src: 'songs/09-solitude.mp3' },
-    { name: 'Chosen',               artist: 'TheFatRat & Laura Brehm',image: 'img/10.jpg', src: 'songs/10-chosen.mp3' },
+    { name: 'Chung ta cua hien tai', artist: 'Son Tung MTP',          src: 'songs/01-chung-ta-cua-hien-tai.mp3' },
+    { name: 'Let me down slowly',    artist: 'Alec Benjamin',         src: 'songs/02-let-me-down-slowly.mp3' },
+    { name: 'Give me your love',     artist: 'DEAM',                  src: 'songs/03-give-me-your-love.mp3' },
+    { name: 'Without you',           artist: 'DEAM',                  src: 'songs/04-without-you.mp3' },
+    { name: 'Perfect',               artist: 'Ed Sheeran',            src: 'songs/05-perfect.mp3' },
+    { name: 'Rendezvous',            artist: 'DEAM',                  src: 'songs/06-rendezvous.mp3' },
+    { name: 'Fractures',             artist: 'Illenium & Nevve',      src: 'songs/07-fractures.mp3' },
+    { name: 'Mayday',                artist: 'TheFatRat & Laura Brehm', src: 'songs/08-mayday.mp3' },
+    { name: 'Solitude',              artist: 'TheFatRat & Slaydit',   src: 'songs/09-solitude.mp3' },
+    { name: 'Chosen',                artist: 'TheFatRat & Laura Brehm', src: 'songs/10-chosen.mp3' },
 ];
 
 const audio       = document.getElementById('audio');
-const cover       = document.getElementById('cover');
+const coverCanvas = document.getElementById('cover');
+const coverCtx    = coverCanvas.getContext('2d');
 const songName    = document.getElementById('songName');
 const songArtist  = document.getElementById('songArtist');
 const progressFill= document.getElementById('progressFill');
@@ -264,10 +265,74 @@ function fmt(s) {
     return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 }
 
+// Generate a unique gradient cover from the song title
+function drawCover(title, artist) {
+    const W = 500;
+    const ctx = coverCtx;
+
+    // Deterministic hue from title string
+    let h1 = 0, h2 = 0;
+    for (let i = 0; i < title.length; i++) h1 = (h1 * 31 + title.charCodeAt(i)) & 0xffff;
+    for (let i = 0; i < (artist||'').length; i++) h2 = (h2 * 31 + artist.charCodeAt(i)) & 0xffff;
+    const hue1 = h1 % 360;
+    const hue2 = (hue1 + 40 + (h2 % 80)) % 360;
+
+    // Background gradient
+    const bg = ctx.createLinearGradient(0, 0, W, W);
+    bg.addColorStop(0, `hsl(${hue1},60%,25%)`);
+    bg.addColorStop(1, `hsl(${hue2},70%,15%)`);
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, W);
+
+    // Decorative circles
+    const accent = `hsl(${hue1},80%,60%)`;
+    ctx.save();
+    ctx.globalAlpha = 0.12;
+    ctx.fillStyle = accent;
+    ctx.beginPath(); ctx.arc(W * 0.75, W * 0.25, W * 0.45, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(W * 0.2,  W * 0.8,  W * 0.35, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+
+    // Music note icon (center)
+    ctx.save();
+    ctx.fillStyle = `hsla(${hue1},80%,80%,0.25)`;
+    ctx.font = '200px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('♫', W / 2, W / 2 - 30);
+    ctx.restore();
+
+    // Artist name (small, upper area)
+    if (artist) {
+        ctx.fillStyle = `hsla(${hue1},60%,85%,0.7)`;
+        ctx.font = 'bold 28px -apple-system, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillText(artist.toUpperCase(), W / 2, W * 0.72);
+    }
+
+    // Song title (large, bottom area) — word-wrap
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 46px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    const words = title.split(' ');
+    const lines = [];
+    let line = '';
+    for (const w of words) {
+        const test = line ? line + ' ' + w : w;
+        if (ctx.measureText(test).width > W - 60 && line) { lines.push(line); line = w; }
+        else line = test;
+    }
+    lines.push(line);
+    const lineH = 54;
+    const startY = W * 0.82 - ((lines.length - 1) * lineH) / 2;
+    lines.forEach((l, i) => ctx.fillText(l, W / 2, startY + i * lineH));
+}
+
 function loadSong(autoplay) {
     const s = songs[idx];
-    cover.src = s.image || '';
-    cover.style.visibility = s.image ? 'visible' : 'hidden';
+    drawCover(s.name, s.artist);
     songName.textContent   = s.name;
     songArtist.textContent = s.artist;
     progressFill.style.width = '0%';
@@ -278,7 +343,7 @@ function loadSong(autoplay) {
         navigator.mediaSession.metadata = new MediaMetadata({
             title: s.name,
             artist: s.artist,
-            artwork: s.image ? [{ src: s.image, sizes: '500x500', type: 'image/jpeg' }] : [],
+            artwork: [{ src: coverCanvas.toDataURL(), sizes: '500x500', type: 'image/png' }],
         });
     }
 
@@ -384,9 +449,8 @@ function loadLocalFiles(files) {
     songs.forEach(s => { if (s.blob) URL.revokeObjectURL(s.src); });
 
     const newSongs = Array.from(files).map(f => ({
-        name:   f.name.replace(/\.[^.]+$/, ''), // strip extension
+        name:   f.name.replace(/\.[^.]+$/, ''),
         artist: '',
-        image:  '',
         src:    URL.createObjectURL(f),
         blob:   true,
     }));

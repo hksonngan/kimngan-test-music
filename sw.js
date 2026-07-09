@@ -2,8 +2,6 @@ const CACHE = 'music-player-v1';
 const ASSETS = [
     '/',
     '/index.html',
-    '/img/01.jpg', '/img/02.jpg', '/img/03.jpg', '/img/04.jpg', '/img/05.jpg',
-    '/img/06.jpg', '/img/07.jpg', '/img/08.jpg', '/img/09.jpg', '/img/10.jpg',
     '/songs/01-chung-ta-cua-hien-tai.mp3',
     '/songs/02-let-me-down-slowly.mp3',
     '/songs/03-give-me-your-love.mp3',
