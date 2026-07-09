@@ -28,14 +28,27 @@
             box-shadow: 0 24px 64px rgba(0,0,0,0.6);
         }
 
-        .cover {
+        .cover-wrap {
+            position: relative;
             width: 100%;
             aspect-ratio: 1;
-            border-radius: 16px;
-            object-fit: cover;
-            display: block;
             margin-bottom: 22px;
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        .cover {
+            width: 100%;
+            height: 100%;
+            border-radius: 16px;
+            display: block;
             background: #0f3460;
+        }
+        #vizCanvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
         }
 
         .meta { margin-bottom: 20px; }
@@ -262,7 +275,10 @@
 </head>
 <body>
 <div class="player">
-    <canvas class="cover" id="cover" width="500" height="500"></canvas>
+    <div class="cover-wrap">
+        <canvas class="cover" id="cover" width="500" height="500"></canvas>
+        <canvas id="vizCanvas" width="500" height="500"></canvas>
+    </div>
 
     <div class="meta">
         <div class="song-name" id="songName"></div>
@@ -656,6 +672,7 @@ function initAudioGraph() {
     filterMid.type    = 'peaking';   filterMid.frequency.value    = 1000; filterMid.Q.value = 1;
     filterTreble.type = 'highshelf'; filterTreble.frequency.value = 3000;
 
+    // filterTreble → destination connected here; startViz() will insert analyser in between
     srcNode.connect(filterBass).connect(filterMid).connect(filterTreble).connect(audioCtx.destination);
 }
 
@@ -697,8 +714,61 @@ audio.addEventListener('play', () => {
     initAudioGraph();
     if (!audioCtx) return;
     if (audioCtx.state === 'suspended') audioCtx.resume();
-    if (isNew) loadEQ(idx); // apply saved EQ now that filters exist for the first time
+    if (isNew) { loadEQ(idx); startViz(); }
+    else if (analyser) drawViz(); // restart animation after pause/song-change
 });
+audio.addEventListener('pause', stopViz);
+// 'ended' handled by next() already — no stopViz here to avoid racing with new song's play
+
+// ─── Visualizer ───────────────────────────────────────────────────────────────
+const vizCanvas = document.getElementById('vizCanvas');
+const vizCtx    = vizCanvas.getContext('2d');
+let analyser, vizRaf;
+
+function startViz() {
+    if (!audioCtx || analyser) return;
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 128;
+    // Insert analyser: filterTreble → analyser → destination
+    // Connect new path first, then disconnect old to avoid dropout
+    filterTreble.connect(analyser);
+    analyser.connect(audioCtx.destination);
+    try { filterTreble.disconnect(audioCtx.destination); } catch(_) {}
+    drawViz();
+}
+
+function stopViz() {
+    cancelAnimationFrame(vizRaf);
+    vizCtx.clearRect(0, 0, vizCanvas.width, vizCanvas.height);
+}
+
+function drawViz() {
+    vizRaf = requestAnimationFrame(drawViz);
+    const bins = analyser.frequencyBinCount; // = fftSize / 2 = 64
+    const data = new Uint8Array(bins);
+    analyser.getByteFrequencyData(data);
+
+    const W = vizCanvas.width, H = vizCanvas.height;
+    vizCtx.clearRect(0, 0, W, H);
+
+    const barW = W / bins;
+    // Use only the lower 48 bins (upper ones are mostly silence for music)
+    const useBins = Math.floor(bins * 0.75);
+
+    for (let i = 0; i < useBins; i++) {
+        const v = data[i] / 255;           // 0..1
+        const barH = v * H * 0.55;
+        const x = i * (W / useBins);
+        const w = W / useBins - 2;
+
+        // Color: hue shifts from red/pink (bass) to cyan (treble)
+        const hue = 340 + i * (200 / useBins);
+        vizCtx.fillStyle = `hsla(${hue % 360}, 80%, 60%, ${0.5 + v * 0.5})`;
+        vizCtx.beginPath();
+        vizCtx.roundRect(x, H - barH, w, barH, 3);
+        vizCtx.fill();
+    }
+}
 
 loadSong(false);
 renderPlaylist();
