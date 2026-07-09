@@ -45,7 +45,6 @@
             margin-bottom: 22px;
             border-radius: 50%;
             overflow: hidden;
-            transition: border-radius 0.4s ease;
         }
         .cover-wrap.playing {
             animation: spin 12s linear infinite;
@@ -623,16 +622,12 @@ function setVolume(v) {
 // ─── Repeat ───────────────────────────────────────────────────────────────────
 // modes: 'none' → 'all' → 'one'
 let repeatMode = 'none';
-const REPEAT_ICONS = {
-    none: '<path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/>',
-    all:  '<path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/>',
-    one:  '<path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/><text x="12" y="13.5" text-anchor="middle" font-size="7" font-weight="bold" fill="currentColor">1</text>',
-};
+const ICON_REPEAT_BASE = '<path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/>';
 
 function cycleRepeat() {
     repeatMode = repeatMode === 'none' ? 'all' : repeatMode === 'all' ? 'one' : 'none';
     const btn = document.getElementById('repeatBtn');
-    btn.querySelector('svg').innerHTML = REPEAT_ICONS[repeatMode];
+    btn.querySelector('svg').innerHTML = ICON_REPEAT_BASE + (repeatMode === 'one' ? '<text x="12" y="13.5" text-anchor="middle" font-size="7" font-weight="bold" fill="currentColor">1</text>' : '');
     btn.classList.toggle('active', repeatMode !== 'none');
 }
 
@@ -648,12 +643,8 @@ let sleepTimer = null;
 function setSleep(minutes) {
     clearTimeout(sleepTimer);
     sleepTimer = null;
-    // Reset all button styles
-    document.querySelectorAll('.sleep-opt').forEach(b => b.classList.remove('active-sleep'));
-    document.getElementById('sleepOff').classList.toggle('active-sleep', minutes === 0);
+    document.querySelectorAll('.sleep-opt').forEach(b => b.classList.toggle('active-sleep', b === event.target || (minutes === 0 && b.id === 'sleepOff')));
     if (minutes === 0) { document.getElementById('sleepLabel').textContent = 'Sleep'; return; }
-    // Highlight selected button
-    event.target.classList.add('active-sleep');
     const ms = minutes * 60 * 1000;
     let remaining = ms;
     // Update label with countdown every 30s
