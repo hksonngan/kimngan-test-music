@@ -371,10 +371,10 @@
     <div class="extra-row">
         <span id="sleepLabel" class="extra-label">Sleep</span>
         <div class="sleep-btns">
-            <button class="sleep-opt" onclick="setSleep(15)">15m</button>
-            <button class="sleep-opt" onclick="setSleep(30)">30m</button>
-            <button class="sleep-opt" onclick="setSleep(60)">60m</button>
-            <button class="sleep-opt active-sleep" id="sleepOff" onclick="setSleep(0)">Off</button>
+            <button class="sleep-opt" onclick="setSleep(15,this)">15m</button>
+            <button class="sleep-opt" onclick="setSleep(30,this)">30m</button>
+            <button class="sleep-opt" onclick="setSleep(60,this)">60m</button>
+            <button class="sleep-opt active-sleep" id="sleepOff" onclick="setSleep(0,this)">Off</button>
         </div>
     </div>
 
@@ -640,14 +640,13 @@ audio.addEventListener('ended', () => {
 // ─── Sleep timer ──────────────────────────────────────────────────────────────
 let sleepTimer = null;
 
-function setSleep(minutes) {
+function setSleep(minutes, btn) {
     clearTimeout(sleepTimer);
     sleepTimer = null;
-    document.querySelectorAll('.sleep-opt').forEach(b => b.classList.toggle('active-sleep', b === event.target || (minutes === 0 && b.id === 'sleepOff')));
+    document.querySelectorAll('.sleep-opt').forEach(b => b.classList.toggle('active-sleep', minutes === 0 ? b.id === 'sleepOff' : b === btn));
     if (minutes === 0) { document.getElementById('sleepLabel').textContent = 'Sleep'; return; }
     const ms = minutes * 60 * 1000;
     let remaining = ms;
-    // Update label with countdown every 30s
     const tick = setInterval(() => {
         remaining -= 30000;
         if (remaining <= 0) { clearInterval(tick); return; }
@@ -657,7 +656,7 @@ function setSleep(minutes) {
     sleepTimer = setTimeout(() => {
         audio.pause();
         clearInterval(tick);
-        setSleep(0);
+        setSleep(0); // called from timeout — no btn needed
     }, ms);
 }
 
