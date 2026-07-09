@@ -1,7 +1,8 @@
-const CACHE = 'music-player-v4';
+const CACHE = 'music-player-v5';
 const ASSETS = [
     '/',
     '/index.html',
+    '/manifest.json',
     '/songs/01-chung-ta-cua-hien-tai.mp3',
     '/songs/02-let-me-down-slowly.mp3',
     '/songs/03-give-me-your-love.mp3',
