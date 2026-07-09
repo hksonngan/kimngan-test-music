@@ -379,7 +379,8 @@ loadSong(false);
 function loadLocalFiles(files) {
     if (!files.length) return;
 
-    // Revoke old blob URLs to free memory
+    // Pause current playback before revoking blob URLs
+    audio.pause();
     songs.forEach(s => { if (s.blob) URL.revokeObjectURL(s.src); });
 
     const newSongs = Array.from(files).map(f => ({
@@ -402,17 +403,29 @@ function renderPlaylist() {
     songs.forEach((s, i) => {
         const el = document.createElement('div');
         el.className = 'pl-item' + (i === idx ? ' active' : '');
-        el.dataset.i = i;
-        el.innerHTML = `<span class="pl-num">${i + 1}</span>
-            <div class="pl-info">
-                <div class="pl-name">${s.name}</div>
-                ${s.artist ? `<div class="pl-artist">${s.artist}</div>` : ''}
-            </div>`;
-        el.addEventListener('click', () => {
-            idx = i;
-            loadSong(true);
-            renderPlaylist();
-        });
+
+        const num = document.createElement('span');
+        num.className = 'pl-num';
+        num.textContent = i + 1;
+
+        const info = document.createElement('div');
+        info.className = 'pl-info';
+
+        const name = document.createElement('div');
+        name.className = 'pl-name';
+        name.textContent = s.name;
+        info.appendChild(name);
+
+        if (s.artist) {
+            const artist = document.createElement('div');
+            artist.className = 'pl-artist';
+            artist.textContent = s.artist;
+            info.appendChild(artist);
+        }
+
+        el.appendChild(num);
+        el.appendChild(info);
+        el.addEventListener('click', () => { idx = i; loadSong(true); renderPlaylist(); });
         pl.appendChild(el);
     });
 }
