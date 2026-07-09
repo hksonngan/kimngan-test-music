@@ -46,19 +46,19 @@
             border-radius: 50%;
             overflow: hidden;
         }
-        .cover-wrap.playing {
-            animation: spin 12s linear infinite;
-        }
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to   { transform: rotate(360deg); }
-        }
         .cover {
             width: 100%;
             height: 100%;
             border-radius: 50%;
             display: block;
             background: var(--track-bg);
+        }
+        .cover.playing {
+            animation: spin 12s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
         }
         #vizCanvas {
             position: absolute;
@@ -485,12 +485,10 @@ function drawCover(title, artist) {
     const hue1 = h1 % 360;
     const hue2 = (hue1 + 40 + (h2 % 80)) % 360;
 
-    // Update player theme to match cover colors
+    // Only tint the accent color — leave background/track colors stable
     const root = document.documentElement.style;
     root.setProperty('--accent',      `hsl(${hue1}, 75%, 55%)`);
     root.setProperty('--accent-dark', `hsl(${hue1}, 75%, 42%)`);
-    root.setProperty('--player-bg',   `hsl(${hue2}, 40%, 12%)`);
-    root.setProperty('--track-bg',    `hsl(${hue2}, 50%, 18%)`);
 
     // Background gradient
     const bg = ctx.createLinearGradient(0, 0, W, W);
@@ -701,8 +699,8 @@ coverWrap.addEventListener('touchend', e => {
 }, { passive: true });
 
 // Sync play/pause icon with actual audio state
-audio.addEventListener('play',  () => { playIcon.innerHTML = ICON_PAUSE; coverWrap.classList.add('playing'); });
-audio.addEventListener('pause', () => { playIcon.innerHTML = ICON_PLAY;  coverWrap.classList.remove('playing'); });
+audio.addEventListener('play',  () => { playIcon.innerHTML = ICON_PAUSE; coverCanvas.classList.add('playing'); });
+audio.addEventListener('pause', () => { playIcon.innerHTML = ICON_PLAY;  coverCanvas.classList.remove('playing'); });
 
 audio.addEventListener('timeupdate', () => {
     if (!audio.duration) return;
