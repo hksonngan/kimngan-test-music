@@ -1,4 +1,4 @@
-const CACHE = 'music-player-v2';
+const CACHE = 'music-player-v3';
 const ASSETS = [
     '/',
     '/index.html',
@@ -31,6 +31,7 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+    if (!e.request.url.startsWith('http')) return; // skip non-http (empty, blob, data URLs)
     // Handle range requests for audio (browsers send these for seeking)
     if (e.request.headers.get('range')) {
         e.respondWith(

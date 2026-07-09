@@ -348,16 +348,26 @@
 <script>
 // Add your own songs here — put MP3 files in a songs/ folder and use relative paths like "songs/my-song.mp3"
 const songs = [
-    { name: 'Chung ta cua hien tai', artist: 'Son Tung MTP',          src: 'songs/01-chung-ta-cua-hien-tai.mp3' },
-    { name: 'Let me down slowly',    artist: 'Alec Benjamin',         src: 'songs/02-let-me-down-slowly.mp3' },
-    { name: 'Give me your love',     artist: 'DEAM',                  src: 'songs/03-give-me-your-love.mp3' },
-    { name: 'Without you',           artist: 'DEAM',                  src: 'songs/04-without-you.mp3' },
-    { name: 'Perfect',               artist: 'Ed Sheeran',            src: 'songs/05-perfect.mp3' },
-    { name: 'Rendezvous',            artist: 'DEAM',                  src: 'songs/06-rendezvous.mp3' },
-    { name: 'Fractures',             artist: 'Illenium & Nevve',      src: 'songs/07-fractures.mp3' },
-    { name: 'Mayday',                artist: 'TheFatRat & Laura Brehm', src: 'songs/08-mayday.mp3' },
-    { name: 'Solitude',              artist: 'TheFatRat & Slaydit',   src: 'songs/09-solitude.mp3' },
-    { name: 'Chosen',                artist: 'TheFatRat & Laura Brehm', src: 'songs/10-chosen.mp3' },
+    // V-pop: punchy bass, boosted mid for vocals, slight treble air
+    { name: 'Chung ta cua hien tai', artist: 'Son Tung MTP',            src: 'songs/01-chung-ta-cua-hien-tai.mp3', eq: { bass:  4, mid:  3, treble:  2 } },
+    // Acoustic pop: neutral bass, warm mid, gentle treble sparkle
+    { name: 'Let me down slowly',    artist: 'Alec Benjamin',           src: 'songs/02-let-me-down-slowly.mp3',   eq: { bass:  0, mid:  2, treble:  3 } },
+    // Chillout EDM: deep bass, scooped mid, bright treble
+    { name: 'Give me your love',     artist: 'DEAM',                    src: 'songs/03-give-me-your-love.mp3',    eq: { bass:  5, mid: -2, treble:  4 } },
+    // Chillout EDM: same treatment, slightly warmer
+    { name: 'Without you',           artist: 'DEAM',                    src: 'songs/04-without-you.mp3',          eq: { bass:  4, mid: -1, treble:  3 } },
+    // Acoustic ballad: minimal bass, forward mid for guitar/vocal, airy treble
+    { name: 'Perfect',               artist: 'Ed Sheeran',              src: 'songs/05-perfect.mp3',              eq: { bass:  1, mid:  4, treble:  3 } },
+    // Chillout EDM: wide bass, scooped mid, crisp treble
+    { name: 'Rendezvous',            artist: 'DEAM',                    src: 'songs/06-rendezvous.mp3',           eq: { bass:  5, mid: -3, treble:  4 } },
+    // Melodic dubstep: heavy bass, cut mid for impact, high treble for synths
+    { name: 'Fractures',             artist: 'Illenium & Nevve',        src: 'songs/07-fractures.mp3',            eq: { bass:  6, mid: -4, treble:  5 } },
+    // Festival EDM: max bass punch, scooped mid, elevated treble
+    { name: 'Mayday',                artist: 'TheFatRat & Laura Brehm', src: 'songs/08-mayday.mp3',               eq: { bass:  7, mid: -3, treble:  5 } },
+    // Ambient EDM: soft bass, warm mid, subtle treble
+    { name: 'Solitude',              artist: 'TheFatRat & Slaydit',     src: 'songs/09-solitude.mp3',             eq: { bass:  3, mid:  1, treble:  2 } },
+    // Uplifting EDM: strong bass, slight mid cut, bright treble
+    { name: 'Chosen',                artist: 'TheFatRat & Laura Brehm', src: 'songs/10-chosen.mp3',               eq: { bass:  6, mid: -2, treble:  4 } },
 ];
 
 const audio       = document.getElementById('audio');
@@ -660,7 +670,7 @@ function setEQ(band, value) {
 }
 
 function loadEQ(songIdx) {
-    const eq = eqStore[songIdx] || { bass: 0, mid: 0, treble: 0 };
+    const eq = eqStore[songIdx] || songs[songIdx].eq || { bass: 0, mid: 0, treble: 0 };
     document.getElementById('bassSlider').value   = eq.bass;
     document.getElementById('midSlider').value    = eq.mid;
     document.getElementById('trebleSlider').value = eq.treble;
@@ -675,14 +685,17 @@ function loadEQ(songIdx) {
 }
 
 function resetEQ() {
-    delete eqStore[idx];
+    delete eqStore[idx]; // remove user override → loadEQ falls back to song preset
     loadEQ(idx);
 }
 
 // Resume AudioContext on first play (required by iOS)
 audio.addEventListener('play', () => {
+    const isNew = !audioCtx;
     initAudioGraph();
-    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    if (!audioCtx) return;
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    if (isNew) loadEQ(idx); // apply saved EQ now that filters exist for the first time
 });
 
 loadSong(false);
