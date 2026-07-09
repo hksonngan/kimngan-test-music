@@ -371,6 +371,7 @@ const songs = [
 ];
 
 const audio       = document.getElementById('audio');
+if (location.protocol !== 'file:') audio.crossOrigin = 'anonymous'; // must be before first src for Web Audio API
 const coverCanvas = document.getElementById('cover');
 const coverCtx    = coverCanvas.getContext('2d');
 const songName    = document.getElementById('songName');
@@ -588,6 +589,7 @@ function loadLocalFiles(files) {
     // Pause current playback before revoking blob URLs
     audio.pause();
     songs.forEach(s => { if (s.blob) URL.revokeObjectURL(s.src); });
+    Object.keys(eqStore).forEach(k => delete eqStore[k]);
 
     const newSongs = Array.from(files).map(f => ({
         name:   f.name.replace(/\.[^.]+$/, ''),
@@ -641,8 +643,7 @@ const eqStore = {}; // per-song EQ settings keyed by idx
 
 function initAudioGraph() {
     if (audioCtx) return;
-    if (location.protocol === 'file:') return; // EQ unavailable on file://, needs http(s)
-    audio.crossOrigin = 'anonymous';
+    if (location.protocol === 'file:') return;
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     srcNode = audioCtx.createMediaElementSource(audio);
 
@@ -670,7 +671,7 @@ function setEQ(band, value) {
 }
 
 function loadEQ(songIdx) {
-    const eq = eqStore[songIdx] || songs[songIdx].eq || { bass: 0, mid: 0, treble: 0 };
+    const eq = eqStore[songIdx] || (songs[songIdx] && songs[songIdx].eq) || { bass: 0, mid: 0, treble: 0 };
     document.getElementById('bassSlider').value   = eq.bass;
     document.getElementById('midSlider').value    = eq.mid;
     document.getElementById('trebleSlider').value = eq.treble;

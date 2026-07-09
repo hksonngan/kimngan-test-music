@@ -1,4 +1,4 @@
-const CACHE = 'music-player-v3';
+const CACHE = 'music-player-v4';
 const ASSETS = [
     '/',
     '/index.html',
@@ -36,15 +36,14 @@ self.addEventListener('fetch', e => {
     if (e.request.headers.get('range')) {
         e.respondWith(
             caches.open(CACHE).then(async cache => {
-                const cached = await cache.match(e.request.url);
+                const cached = await cache.match(e.request.url, { ignoreVary: true });
                 if (!cached) return fetch(e.request);
                 const buf = await cached.arrayBuffer();
                 const range = e.request.headers.get('range');
                 const m = /bytes=(\d+)-(\d*)/.exec(range);
                 if (!m) return new Response('Invalid range', { status: 416 });
                 const from = Number(m[1]);
-                const to = m[2] ? Number(m[2]) : buf.byteLength - 1;
-                // Guard against out-of-bounds from value
+                const to = Math.min(m[2] ? Number(m[2]) : buf.byteLength - 1, buf.byteLength - 1);
                 if (from >= buf.byteLength) {
                     return new Response(null, {
                         status: 416,
@@ -55,7 +54,7 @@ self.addEventListener('fetch', e => {
                 return new Response(chunk, {
                     status: 206,
                     headers: {
-                        'Content-Range': `bytes ${from}-${from + chunk.byteLength - 1}/${buf.byteLength}`,
+                        'Content-Range': `bytes ${from}-${to}/${buf.byteLength}`,
                         'Content-Length': String(chunk.byteLength),
                         'Content-Type': cached.headers.get('Content-Type') || 'audio/mpeg',
                     },
