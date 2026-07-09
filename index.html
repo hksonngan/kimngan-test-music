@@ -257,7 +257,7 @@
             color: #555;
         }
     </style>
-    <script>if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');</script>
+    <script>if('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js');</script>
 </head>
 <body>
 <div class="player">
@@ -571,9 +571,6 @@ if ('mediaSession' in navigator) {
     });
 }
 
-loadSong(false);
-renderPlaylist();
-
 // ─── Local file loading ───────────────────────────────────────────────────────
 function loadLocalFiles(files) {
     if (!files.length) return;
@@ -634,6 +631,8 @@ const eqStore = {}; // per-song EQ settings keyed by idx
 
 function initAudioGraph() {
     if (audioCtx) return;
+    if (location.protocol === 'file:') return; // EQ unavailable on file://, needs http(s)
+    audio.crossOrigin = 'anonymous';
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     srcNode = audioCtx.createMediaElementSource(audio);
 
@@ -650,7 +649,7 @@ function initAudioGraph() {
 
 function setEQ(band, value) {
     initAudioGraph();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
     const gain = Number(value);
     if (band === 'bass')   { filterBass.gain.value   = gain; document.getElementById('bassDb').textContent   = (gain > 0 ? '+' : '') + gain + ' dB'; }
     if (band === 'mid')    { filterMid.gain.value    = gain; document.getElementById('midDb').textContent    = (gain > 0 ? '+' : '') + gain + ' dB'; }
@@ -683,8 +682,11 @@ function resetEQ() {
 // Resume AudioContext on first play (required by iOS)
 audio.addEventListener('play', () => {
     initAudioGraph();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
 });
+
+loadSong(false);
+renderPlaylist();
 
 </script>
 </body>
