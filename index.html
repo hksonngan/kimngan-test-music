@@ -715,53 +715,63 @@ audio.addEventListener('play', () => {
     if (!audioCtx) return;
     if (audioCtx.state === 'suspended') audioCtx.resume();
     if (isNew) { loadEQ(idx); startViz(); }
-    else if (analyser) drawViz(); // restart animation after pause/song-change
+    else if (analyser && !vizRaf) vizLoop(); // restart loop if it stopped after fade-out
 });
-audio.addEventListener('pause', stopViz);
-// 'ended' handled by next() already — no stopViz here to avoid racing with new song's play
 
 // ─── Visualizer ───────────────────────────────────────────────────────────────
 const vizCanvas = document.getElementById('vizCanvas');
 const vizCtx    = vizCanvas.getContext('2d');
 let analyser, vizRaf;
+// Single state variable: 1 = playing (full bars), 0 = stopped (bars gone)
+// When paused, vizAlpha counts down each frame until 0 → single RAF loop, no races
+let vizAlpha = 0;
+// Snapshot of bar heights at pause time — used for fade-out
+let lastData = null;
 
 function startViz() {
     if (!audioCtx || analyser) return;
     analyser = audioCtx.createAnalyser();
     analyser.fftSize = 128;
-    // Insert analyser: filterTreble → analyser → destination
-    // Connect new path first, then disconnect old to avoid dropout
     filterTreble.connect(analyser);
     analyser.connect(audioCtx.destination);
     try { filterTreble.disconnect(audioCtx.destination); } catch(_) {}
-    drawViz();
+    vizLoop();
 }
 
-function stopViz() {
-    cancelAnimationFrame(vizRaf);
-    vizCtx.clearRect(0, 0, vizCanvas.width, vizCanvas.height);
-}
+function vizLoop() {
+    vizRaf = requestAnimationFrame(vizLoop);
+    if (!analyser) return;
 
-function drawViz() {
-    vizRaf = requestAnimationFrame(drawViz);
-    const bins = analyser.frequencyBinCount; // = fftSize / 2 = 64
-    const data = new Uint8Array(bins);
-    analyser.getByteFrequencyData(data);
-
+    const bins     = analyser.frequencyBinCount;
+    const data     = new Uint8Array(bins);
     const W = vizCanvas.width, H = vizCanvas.height;
+    const useBins  = Math.floor(bins * 0.75);
+
+    if (!audio.paused) {
+        // Playing: read live data, reset alpha
+        analyser.getByteFrequencyData(data);
+        lastData  = data;
+        vizAlpha  = 1;
+    } else {
+        // Paused: fade out using last captured frame
+        vizAlpha -= 0.04;
+        if (vizAlpha <= 0) {
+            vizAlpha = 0;
+            vizCtx.clearRect(0, 0, W, H);
+            cancelAnimationFrame(vizRaf);
+            vizRaf = null;
+            return;
+        }
+        if (lastData) data.set(lastData);
+    }
+
     vizCtx.clearRect(0, 0, W, H);
-
-    const barW = W / bins;
-    // Use only the lower 48 bins (upper ones are mostly silence for music)
-    const useBins = Math.floor(bins * 0.75);
-
     for (let i = 0; i < useBins; i++) {
-        const v = data[i] / 255;           // 0..1
+        const v    = (data[i] / 255) * vizAlpha;
         const barH = v * H * 0.55;
-        const x = i * (W / useBins);
-        const w = W / useBins - 2;
-
-        // Color: hue shifts from red/pink (bass) to cyan (treble)
+        if (barH < 1) continue;
+        const x   = i * (W / useBins);
+        const w   = W / useBins - 2;
         const hue = 340 + i * (200 / useBins);
         vizCtx.fillStyle = `hsla(${hue % 360}, 80%, 60%, ${0.5 + v * 0.5})`;
         vizCtx.beginPath();
