@@ -171,6 +171,7 @@
         .pl-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .pl-artist { font-size: 0.75rem; color: #555; }
     </style>
+    <script>if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');</script>
 </head>
 <body>
 <div class="player">
@@ -231,36 +232,16 @@
 <script>
 // Add your own songs here — put MP3 files in a songs/ folder and use relative paths like "songs/my-song.mp3"
 const songs = [
-    { name: 'Chúng ta của hiện tại', artist: 'Sơn Tùng MTP',
-      image: 'https://1.bp.blogspot.com/-wpE8kAroZl8/X-p8dYlTABI/AAAAAAAAJ8k/QWePuk9isy0PuPMxmweqCnajPlhEI8gagCNcBGAsYHQ/s787/132391052_223041176082901_5587329705790319564_n.png',
-      src:   'https://file-am-thanh.vercel.app/Chung%20Ta%20Cua%20Hien%20Tai%20-%20Son%20Tung%20M-TP.mp3' },
-    { name: 'Let me down slowly', artist: 'Alec Benjamin',
-      image: 'https://images.unsplash.com/photo-1614483573015-fc4ceb584797?auto=format&fit=crop&w=500&q=60',
-      src:   'https://file-am-thanh.vercel.app/Let%20Me%20Down%20Slowly%20Cover.mp3' },
-    { name: 'Give me your love', artist: 'DEAM',
-      image: 'https://images.unsplash.com/photo-1614453966169-fd72db98e20f?auto=format&fit=crop&w=500&q=60',
-      src:   'https://file-am-thanh.vercel.app/Give%20Me%20Your%20Love.mp3' },
-    { name: 'Without you', artist: 'DEAM',
-      image: 'https://images.unsplash.com/photo-1614486109039-a8f3dc411201?auto=format&fit=crop&w=500&q=60',
-      src:   'https://file-am-thanh.vercel.app/Without%20You2.mp3' },
-    { name: 'Perfect', artist: 'Ed Sheeran',
-      image: 'https://images.unsplash.com/photo-1614450231802-d7d0076effb8?auto=format&fit=crop&w=500&q=60',
-      src:   'https://file-am-thanh.vercel.app/Perfect%20(Ed%20Sheeran%20Cover).mp3' },
-    { name: 'Rendezvous', artist: 'DEAM',
-      image: 'https://images.unsplash.com/photo-1614442042855-e17d53875286?auto=format&fit=crop&w=500&q=60',
-      src:   'https://file-am-thanh.vercel.app/Rendezvous.mp3' },
-    { name: 'Fractures', artist: 'Illenium & Nevve',
-      image: 'https://images.unsplash.com/photo-1605885898627-1121a2a1ff25?auto=format&fit=crop&w=500&q=60',
-      src:   'https://file-am-thanh.vercel.app/Fractures%20-%20Illenium_%20Nevve.mp3' },
-    { name: 'Mayday', artist: 'TheFatRat & Laura Brehm',
-      image: 'https://images.unsplash.com/photo-1605722997309-8f308fa11a69?auto=format&fit=crop&w=500&q=60',
-      src:   'https://file-am-thanh.vercel.app/Mayday%20-%20TheFatRat_%20Laura%20Brehm.mp3' },
-    { name: 'Solitude', artist: 'TheFatRat & Slaydit',
-      image: 'https://images.unsplash.com/photo-1605852967399-8e500bac048e?auto=format&fit=crop&w=500&q=60',
-      src:   'https://file-am-thanh.vercel.app/Solitude%20-%20TheFatRat_%20Slaydit.mp3' },
-    { name: 'Chosen', artist: 'TheFatRat & Laura Brehm',
-      image: 'https://images.unsplash.com/photo-1601758124360-86f5a0432c42?auto=format&fit=crop&w=500&q=60',
-      src:   'https://file-am-thanh.vercel.app/Chosen%20-%20TheFatRat_%20Laura%20Brehm_%20Anna%20Yv.mp3' },
+    { name: 'Chung ta cua hien tai', artist: 'Son Tung MTP',   image: 'img/01.jpg', src: 'songs/01-chung-ta-cua-hien-tai.mp3' },
+    { name: 'Let me down slowly',    artist: 'Alec Benjamin',  image: 'img/02.jpg', src: 'songs/02-let-me-down-slowly.mp3' },
+    { name: 'Give me your love',     artist: 'DEAM',           image: 'img/03.jpg', src: 'songs/03-give-me-your-love.mp3' },
+    { name: 'Without you',          artist: 'DEAM',           image: 'img/04.jpg', src: 'songs/04-without-you.mp3' },
+    { name: 'Perfect',              artist: 'Ed Sheeran',     image: 'img/05.jpg', src: 'songs/05-perfect.mp3' },
+    { name: 'Rendezvous',           artist: 'DEAM',           image: 'img/06.jpg', src: 'songs/06-rendezvous.mp3' },
+    { name: 'Fractures',            artist: 'Illenium & Nevve',       image: 'img/07.jpg', src: 'songs/07-fractures.mp3' },
+    { name: 'Mayday',               artist: 'TheFatRat & Laura Brehm',image: 'img/08.jpg', src: 'songs/08-mayday.mp3' },
+    { name: 'Solitude',             artist: 'TheFatRat & Slaydit',    image: 'img/09.jpg', src: 'songs/09-solitude.mp3' },
+    { name: 'Chosen',               artist: 'TheFatRat & Laura Brehm',image: 'img/10.jpg', src: 'songs/10-chosen.mp3' },
 ];
 
 const audio       = document.getElementById('audio');
