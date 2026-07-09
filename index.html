@@ -485,10 +485,6 @@ function drawCover(title, artist) {
     const hue1 = h1 % 360;
     const hue2 = (hue1 + 40 + (h2 % 80)) % 360;
 
-    // Only tint the accent color — leave background/track colors stable
-    const root = document.documentElement.style;
-    root.setProperty('--accent',      `hsl(${hue1}, 75%, 55%)`);
-    root.setProperty('--accent-dark', `hsl(${hue1}, 75%, 42%)`);
 
     // Background gradient
     const bg = ctx.createLinearGradient(0, 0, W, W);
