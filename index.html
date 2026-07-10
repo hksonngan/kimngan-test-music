@@ -127,8 +127,12 @@
             background: var(--accent) !important;
             width: 60px;
             height: 60px;
+            min-width: 60px;
+            min-height: 60px;
             border-radius: 50%;
             color: #fff !important;
+            -webkit-appearance: none;
+            flex-shrink: 0;
         }
         .play-btn:active { background: var(--accent-dark) !important; }
         .ctrl-btn.active { color: var(--accent); }
