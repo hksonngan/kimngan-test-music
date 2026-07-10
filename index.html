@@ -46,15 +46,17 @@
             border-radius: 50%;
             overflow: hidden;
         }
+        .cover-spinner {
+            position: absolute;
+            inset: 0;
+            will-change: transform;
+        }
         .cover {
             width: 100%;
             height: 100%;
             border-radius: 50%;
             display: block;
             background: var(--track-bg);
-        }
-        .cover {
-            will-change: transform;
         }
         #vizCanvas {
             position: absolute;
@@ -322,7 +324,9 @@
 <body>
 <div class="player">
     <div class="cover-wrap">
-        <canvas class="cover" id="cover" width="500" height="500"></canvas>
+        <div class="cover-spinner">
+            <canvas class="cover" id="cover" width="500" height="500"></canvas>
+        </div>
         <canvas id="vizCanvas" width="500" height="500"></canvas>
         <div class="cover-touch"></div>
     </div>
@@ -699,10 +703,11 @@ coverTouch.addEventListener('touchend', e => {
 
 // Sync play/pause icon with actual audio state
 // JS-driven rotation — CSS animation doesn't work reliably on iOS Safari with border-radius+overflow
+const coverSpinner = document.querySelector('.cover-spinner');
 let spinAngle = 0, spinRaf = null;
 function spinTick() {
-    spinAngle = (spinAngle + 0.5) % 360; // 0.5 deg per frame @ 60fps ≈ 12s/rotation
-    coverCanvas.style.transform = `rotate(${spinAngle}deg)`;
+    spinAngle = (spinAngle + 0.5) % 360;
+    coverSpinner.style.transform = `rotate(${spinAngle}deg)`;
     spinRaf = requestAnimationFrame(spinTick);
 }
 audio.addEventListener('play',  () => {
