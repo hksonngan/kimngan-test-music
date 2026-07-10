@@ -53,12 +53,8 @@
             display: block;
             background: var(--track-bg);
         }
-        .cover.playing {
-            animation: spin 12s linear infinite;
-        }
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to   { transform: rotate(360deg); }
+        .cover {
+            will-change: transform;
         }
         #vizCanvas {
             position: absolute;
@@ -702,8 +698,22 @@ coverTouch.addEventListener('touchend', e => {
 }, { passive: true });
 
 // Sync play/pause icon with actual audio state
-audio.addEventListener('play',  () => { playIcon.innerHTML = ICON_PAUSE; coverCanvas.classList.add('playing'); });
-audio.addEventListener('pause', () => { playIcon.innerHTML = ICON_PLAY;  coverCanvas.classList.remove('playing'); });
+// JS-driven rotation — CSS animation doesn't work reliably on iOS Safari with border-radius+overflow
+let spinAngle = 0, spinRaf = null;
+function spinTick() {
+    spinAngle = (spinAngle + 0.5) % 360; // 0.5 deg per frame @ 60fps ≈ 12s/rotation
+    coverCanvas.style.transform = `rotate(${spinAngle}deg)`;
+    spinRaf = requestAnimationFrame(spinTick);
+}
+audio.addEventListener('play',  () => {
+    playIcon.innerHTML = ICON_PAUSE;
+    if (!spinRaf) spinTick();
+});
+audio.addEventListener('pause', () => {
+    playIcon.innerHTML = ICON_PLAY;
+    cancelAnimationFrame(spinRaf);
+    spinRaf = null;
+});
 
 audio.addEventListener('timeupdate', () => {
     if (!audio.duration) return;
